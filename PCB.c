@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <Time.h>
 #include "PCB.h"
 #include "Errors.h"
 
@@ -35,6 +36,13 @@ int PCB_init (PCB_p p) {      // sets default values for member data
 		p->state = DEFAULT_STATE;
 		p->priority = DEFAULT_PRIORITY;
 		p->pc = DEFAULT_PC;
+		p->maxpc = DEFAULT_MAXPC;					
+		p->creation = time(NULL); 	
+		p->termination = NULL;	
+		p-> terminate = TERMINATE_COUNT; 
+		p->termCount = 0; 
+		p->IO_1Trap = NULL;			
+		p->IO_2Trap = NULL;			
 		return 0;
 	}
 }
@@ -128,7 +136,17 @@ void PCB_toString (PCB_p p, char* str) {  // returns a string representing the c
 	strcpy(str, temp);
 }
 */
-
+int PC_Increment(PCB_p p) {
+	p->pc++;
+	if(p->pc > DEFAULT_MAXPC) { //we reached max value and now we need to reset the PC value to 0
+		p->pc = 0;
+		p->termCount++;
+		if(p->termCount >=terminate) {
+			return 1; //this function needs to be termianted.
+		}
+	}
+	return 0;
+}
 void PCB_toString (PCB_p p) { 
 	printf("pid = 0x%lu pc = 0x%lu state = %s\n", 
 			PCB_get_pid(p), PCB_get_pc(p), PCB_get_state(p));

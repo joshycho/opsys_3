@@ -10,6 +10,8 @@
 #define DEFAULT_STATE created
 #define DEFAULT_PRIORITY 15
 #define DEFAULT_PC 0x0000
+#define DEFAULT_MAXPC 32345
+#define TERMINATE_COUNT 15
 
 enum state_type {created, ready, running, interrupted, waiting, halted};	
 
@@ -18,6 +20,14 @@ typedef struct pcb {
 	enum state_type state;    // process state (running, waiting, etc.)
 	unsigned short priority;  // priorities 0=highest, 15=lowest
 	unsigned long pc;         // holds the current pc value when preempted
+	int maxpc;					//Max value for PC
+	char * creation; 		//Time of creation for the PCB ***TIME will return a string not a number value in C
+	char * termination;	//Time the pcb is terminated 
+	unsigned int terminate; //How many cycles until it terminates ie reached maxpc and resets x times
+	unsigned int termCount; //How many times we've reached max PC
+	int* IO_1Trap;			//Trap handler calls
+	int* IO_2Trap;			//Trap handler calls
+	
 } PCB;
 
 typedef PCB * PCB_p;
@@ -48,4 +58,6 @@ void PCB_toString (PCB_p);
 //void PCB_toString (PCB_p, char*);  // returns a string representing the contents of the pcb
 
 void print_error(int err);	//prints error information
+
+int PC_Increment(PCB_p); //Function to add 1 to the PCB and handel the maxPC interaction returns 0 if not terminated, 1 if terminated
 
