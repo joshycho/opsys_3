@@ -46,6 +46,19 @@ int PCB_init (PCB_p p) {      // sets default values for member data
 		return 0;
 	}
 }
+
+void IO_Trap_init(PCB_p p) {
+	int currIndex = 0, currPC = 0, numTraps = 0;
+	int arr[10];
+	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
+		srand(time(NULL));
+		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
+		arr[currIndex] = r;
+		currIndex++;
+	}
+	p->IO_1Trap = &a[0]; 
+}
+
 int PCB_set_pid (PCB_p p, unsigned long num) {		//sets pid value for the pcb
 	if (!p) {
 		return 1;
@@ -88,11 +101,14 @@ const char* PCB_get_state(PCB_p p) {	//returns char pointer containing state of 
 	  case interrupted: 
 		state = "interrupted";
 		break;
-	  case waiting: state = 
-		"waiting";
+	  case waiting: 
+	    state = "waiting";
 		break;
 	  case halted: 
-	  state = "halted";
+		state = "halted";
+		break;
+	  case terminated: 
+		state = "terminated";
    }
    return state;
 }

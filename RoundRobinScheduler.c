@@ -52,23 +52,63 @@ void mainloopFunction(struct cpu *self) {
 	Queue_q newProcessQueue = queue_construct();
 	queue_init(newProcessQueue);
 	
+	Queue_q terminateQueue = queue_construct();
+	queue_init(terminateQueue);
+	
+	Queue_q waitingQueueIO1 = queue_construct();
+	queue_init(waitingQueueIO1);
+	
+	Queue_q waitingQueueIO2 = queue_construct();
+	queue_init(waitingQueueIO2);
+	
 	PCB_p currProcess = PCB_construct();
 	PCB_init(currProcess);
-	PCB_set_state(currProcess, ready);
+	PCB_set_pid(currProcess, pid);
 	
-	
-	while (readyQueue->size < 30) {
-		int i, j = randomNumber(MIN_NUM_NEW_PCB, MAX_NUM_NEW_PCB);
-		for(i = 0; i < j; i++) {
+	for(i = 0; i < DEFAULT_NUM_PCBS; i++) {
 			PCB_p p = PCB_construct();
 			PCB_init(p);
 			pid++;
 			PCB_set_pid(p, pid);
 			newProcessQueue = enqueue(newProcessQueue, p);
-		}
+	}
+	
 		NewToReady(newProcessQueue, readyQueue);
-		self->pcRegister += randomNumber(MIN_PC_INCREMENT, MAX_PC_INCREMENT);
+	
+	while (readyQueue > 0) {
+		
+		
+		self->pcRegister = PCB_get_pc(currProcess);
 		SysStack = self->pcRegister;
+		
+		if (PC_increment(currProcess) == 1) { //If incrementing the PC causes termcount = terminate then puts PCB in terminate queue and dequeues new currProcess.
+			PCB_set_state(currProcess, terminated);
+			currProcess->termination = time(NULL);
+			terminateQueue = enqueue(newProcessQueue, currProcess);
+			
+			CurrProcess = dequeue(readyQueue);		
+			self->pcRegister = PCB_get_pc(currProcess);
+			SysStack = self->pcRegister;
+		}
+		
+	/*		The following if statements check for signals in all 3 threads while timer has priority. If timer mutex is unlocked goes to ISR, if IO unlocked goes to IOTrapHandler.
+	
+	if (pthread_mutex_trylock(&TIMERMUTEX == 0)  { // If timer mutex is open
+			currProcess = ISR(timer, currProcess, readyQueue);
+		}
+		
+		if(pthread_mutex_trylock(&IO1MUTEX == 0) {
+			IOTrapHandler(1, waitingQueueIO1, currProcess) ;
+		}
+		
+		if (pthread_mutex_trylock(&IO2Mutex == 0) {
+			IOTrapHandler(2, waitingQueueIO2, currProcess);
+		}
+		
+		*/
+		
+		CheckIOTrap1(currProcess);
+		
 		currProcess = ISR(currProcess, readyQueue);
 		self->pcRegister = SysStack;
 	}
@@ -79,6 +119,33 @@ void mainloopFunction(struct cpu *self) {
 	
 	queue_destruct(readyQueue);
 	queue_destruct(newProcessQueue);
+	queue_destruct(terminateQueue)
+	
+}
+
+int CheckIOTrap1(PCB_p currProcess) { //goes through IO trap array in currProcess and checks if equal to PC
+	
+}
+
+int CheckIOTrap2(PCB_p currProcess) {
+	
+}
+
+PCB_p IOTrapHandler(int IONumber, Queue_q waitingQ, PCB_p currProcess) {
+	switch(IONumber) {
+		case 1:
+		PCB_set_state(currProcess, halted);
+		enqueue(currProcess, waitingQ);
+		//signal IO thread 1 to sleep
+		scheduler(IO, currProcess, readyQueue);
+		break;
+		case 2: 
+		PCB_set_state(currProcess, halted);
+		enqueue(currProcess, waitingQ);
+		//signal IO thread 2 to sleep
+		scheduler(IO, currProcess, readyQueue);
+	}
+	
 	
 }
 
@@ -92,24 +159,18 @@ void NewToReady(Queue_q newQ, Queue_q readyQ) {
 	}
 }
 
-PCB_p ISR(PCB_p currProcess, Queue_q readyQueue) {
+PCB_p ISR(enum interrupt_type i, PCB_p currProcess, Queue_q readyQueue) {
 	
 	PCB_set_state(currProcess, interrupted);
 	PCB_set_pc(currProcess, SysStack);
 	
-	return scheduler(interrupt, currProcess, readyQueue);
+	return scheduler(i, currProcess, readyQueue);
 }
 
 PCB_p scheduler(enum interrupt_type i, PCB_p currProcess, Queue_q readyQueue) {
 	
 	switch (i) {
 		case timer: 
-			break;
-		
-		case IO:
-			break;
-			
-		case interrupt:
 			PCB_set_state(currProcess, ready);
 			
 			printf("Returned to Ready Queue: ");
@@ -118,6 +179,12 @@ PCB_p scheduler(enum interrupt_type i, PCB_p currProcess, Queue_q readyQueue) {
 			enqueue(readyQueue, currProcess);
 			
 			return dispatcher(currProcess, readyQueue);
+		
+		case IO:
+			return dispatcher(currProcess, readyQueue);
+			break;
+			
+		case interrupt:
 	}
 	return NULL;
 }

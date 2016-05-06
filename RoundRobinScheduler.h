@@ -1,10 +1,7 @@
 
 #include "queue.h"
 
-#define MIN_NUM_NEW_PCB 0
-#define MAX_NUM_NEW_PCB 5
-#define MIN_PC_INCREMENT 3000
-#define MAX_PC_INCREMENT 4000
+#define DEFAULT_NUM_PCBS 5
 #define QUANTUM 300
 
 enum interrupt_type {timer, IO, interrupt};	
@@ -14,10 +11,13 @@ typedef struct cpu {
 	void(*mainLoop) (struct cpu *);
 }CPU;
 
+int CheckIOTrap1(PCB_p);
+int CheckIOTrap2(PCB_p);
+PCB_p IOTrapHandler(int, Queue_q, PCB_p) ;
 void mainloopFunction(struct cpu *);
 int randomNumber (int, int); 
 void NewToReady(Queue_q, Queue_q);
-PCB_p ISR(PCB_p, Queue_q);
+PCB_p ISR(enum interrupt_type, PCB_p, Queue_q);
 PCB_p scheduler(enum interrupt_type, PCB_p, Queue_q);
 PCB_p dispatcher(PCB_p, Queue_q);
 PCB_p RoundRobinPrint(PCB_p, Queue_q);

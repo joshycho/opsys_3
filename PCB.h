@@ -13,7 +13,7 @@
 #define DEFAULT_MAXPC 32345
 #define TERMINATE_COUNT 15
 
-enum state_type {created, ready, running, interrupted, waiting, halted};	
+enum state_type {created, ready, running, interrupted, waiting, halted, terminated};	
 
 typedef struct pcb {
     unsigned long pid;        // process ID #, a unique number
