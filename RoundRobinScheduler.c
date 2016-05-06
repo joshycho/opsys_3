@@ -1,11 +1,13 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include<pthread.h>
+#include 
 #include "RoundRobinScheduler.h"
 
 static unsigned int SysStack = 0;
 static int CallsToDispathcer = 0;
+pthread_t pthr_timer, pthr_iotrap1, pthr_iotrap2;
 
 int randomNumber (int min, int max) {
 	srand(time(NULL));
@@ -23,6 +25,26 @@ int main (void) {
 
 void mainloopFunction(struct cpu *self) {
 	unsigned long pid = 1;
+	const char* timer_message = "In timer thread";
+	const char* trap1_message = "In IO trap 1 thread";
+	const char* trap2_message = "In IO trap 2 thread";
+	
+	
+	if (pthread_create(@pthr_timer, NULL, TIMER_FUNCTION, (void*) timer_message)){
+		fprintf(stderr, "Can't create timer thread\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	if (pthread_create(@pthr_iotrap1, NULL, IOTRAP1_FUNCTION, (void*) trap1_message)){
+		fprintf(stderr, "Can't create IO trap1 thread\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	if (pthread_create(@pthr_iotrap2, NULL, IOTRAP2_FUNCTION, (void*) trap2_message)){
+		fprintf(stderr, "Can't create IO trap2 thread\n");
+		exit(EXIT_FAILURE);
+	}
+	
 	
 	Queue_q readyQueue = queue_construct();
 	queue_init(readyQueue);
@@ -37,7 +59,6 @@ void mainloopFunction(struct cpu *self) {
 	
 	while (readyQueue->size < 30) {
 		int i, j = randomNumber(MIN_NUM_NEW_PCB, MAX_NUM_NEW_PCB);
-			
 		for(i = 0; i < j; i++) {
 			PCB_p p = PCB_construct();
 			PCB_init(p);
@@ -134,4 +155,32 @@ PCB_p RoundRobinPrint(PCB_p currProcess, Queue_q readyQueue) {
 		printf("\n\n");
 		return newCurrentProcess;
 }
-
+//MUTEX NAMES: pthr_timer, pthr_iotrap1, pthr_iotrap2;
+void Timer() {
+	int Counter = QUANTUM;
+	pthread_mutex_lock(&pthr_timer);
+	
+	while (timercounter > 0) {
+		nanosleep();
+		timerCounter--; 
+	}
+	pthread_mutex_unlock(&pthr_timer);
+		// Call ISR with timer interrupt
+}
+void io_trap1() {
+	//make a random time
+	int ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
+	while (ioCounter > 0){
+		ioCounter--;
+	}
+	
+		// call ISR with io interrupt
+}
+void io_trap2() {
+	int ioCounter =  (QUANTUM * 3 + QUANTUM*(rand()%2));
+	while (ioCounter > 0){
+		ioCounter--;
+	}
+	
+		// call ISR with io interrupt
+}

@@ -5,6 +5,7 @@
 #define MAX_NUM_NEW_PCB 5
 #define MIN_PC_INCREMENT 3000
 #define MAX_PC_INCREMENT 4000
+#define QUANTUM 300
 
 enum interrupt_type {timer, IO, interrupt};	
 
@@ -20,3 +21,6 @@ PCB_p ISR(PCB_p, Queue_q);
 PCB_p scheduler(enum interrupt_type, PCB_p, Queue_q);
 PCB_p dispatcher(PCB_p, Queue_q);
 PCB_p RoundRobinPrint(PCB_p, Queue_q);
+void Timer();
+void io_trap1();
+void io_trap2();
