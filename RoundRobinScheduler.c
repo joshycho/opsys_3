@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include<pthread.h>
-#include 
+#include <pthread.h>
 #include "RoundRobinScheduler.h"
 
 static unsigned int SysStack = 0;
@@ -64,7 +63,7 @@ void mainloopFunction(struct cpu *self) {
 	PCB_p currProcess = PCB_construct();
 	PCB_init(currProcess);
 	PCB_set_pid(currProcess, pid);
-	
+	int i;
 	for(i = 0; i < DEFAULT_NUM_PCBS; i++) {
 			PCB_p p = PCB_construct();
 			PCB_init(p);
@@ -119,7 +118,7 @@ void mainloopFunction(struct cpu *self) {
 	
 	queue_destruct(readyQueue);
 	queue_destruct(newProcessQueue);
-	queue_destruct(terminateQueue)
+	queue_destruct(terminateQueue);
 	
 }
 
@@ -222,14 +221,15 @@ PCB_p RoundRobinPrint(PCB_p currProcess, Queue_q readyQueue) {
 		printf("\n\n");
 		return newCurrentProcess;
 }
+
 //MUTEX NAMES: pthr_timer, pthr_iotrap1, pthr_iotrap2;
 void Timer() {
-	int Counter = QUANTUM;
+	int counter = QUANTUM;
 	pthread_mutex_lock(&pthr_timer);
 	
-	while (timercounter > 0) {
+	while (counter > 0) {
 		nanosleep();
-		timerCounter--; 
+		counter--; 
 	}
 	pthread_mutex_unlock(&pthr_timer);
 		// Call ISR with timer interrupt
