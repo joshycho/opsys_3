@@ -38,25 +38,33 @@ int PCB_init (PCB_p p) {      // sets default values for member data
 		p->pc = DEFAULT_PC;
 		p->maxpc = DEFAULT_MAXPC;					
 		p->creation = time(NULL); 	
-		p->termination = NULL;	
+		p->termination = 0;	
 		p-> terminate = TERMINATE_COUNT; 
-		p->termCount = 0; 
-		p->IO_1Trap = NULL;			
-		p->IO_2Trap = NULL;			
+		p->termCount = 0;
+		IO_Trap_init(p);
 		return 0;
 	}
 }
 
 void IO_Trap_init(PCB_p p) {
 	int currIndex = 0, currPC = 0, numTraps = 0;
-	int arr[10];
+	int arr1[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+	int arr2[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+	p->IO_1Trap = arr1;
+	p->IO_2Trap = arr2;
 	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
 		srand(time(NULL));
 		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
-		arr[currIndex] = r;
+		arr1[currIndex] = r;
 		currIndex++;
-	}
-	p->IO_1Trap = &a[0]; 
+	} 
+	currIndex = 0, currPC = 0, numTraps = 0;
+	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
+		srand(time(NULL));
+		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
+		arr2[currIndex] = r;
+		currIndex++;
+	} 
 }
 
 int PCB_set_pid (PCB_p p, unsigned long num) {		//sets pid value for the pcb
@@ -157,7 +165,7 @@ int PC_Increment(PCB_p p) {
 	if(p->pc > DEFAULT_MAXPC) { //we reached max value and now we need to reset the PC value to 0
 		p->pc = 0;
 		p->termCount++;
-		if(p->termCount >=terminate) {
+		if(p->termCount >= p->terminate) {
 			return 1; //this function needs to be termianted.
 		}
 	}

@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <pthread.h>
+#include<pthread.h>
 #include "RoundRobinScheduler.h"
 
 static unsigned int SysStack = 0;
 static int CallsToDispathcer = 0;
+
+
+pthread_mutex_t timer1_mutex, timer2_mutex, io1_mutex, io2_mutex, trap1_mutex, trap2_mutex;
+
 pthread_t pthr_timer, pthr_iotrap1, pthr_iotrap2;
 
 int randomNumber (int min, int max) {
@@ -23,23 +27,28 @@ int main (void) {
 }
 
 void mainloopFunction(struct cpu *self) {
+	
+	pthread_mutex_lock(&timer2_mutex);
+	printf("main locked timer2_mutex\n\n");
+	pthread_mutex_lock(&trap1_mutex);
+	printf("main locked trap1_mutex\n\n");
+	pthread_mutex_lock(&trap2_mutex);
+	printf("main locked trap2_mutex\n\n");
+	
 	unsigned long pid = 1;
-	const char* timer_message = "In timer thread";
-	const char* trap1_message = "In IO trap 1 thread";
-	const char* trap2_message = "In IO trap 2 thread";
 	
 	
-	if (pthread_create(@pthr_timer, NULL, TIMER_FUNCTION, (void*) timer_message)){
+	if (pthread_create(&pthr_timer, NULL, Timer, NULL)){
 		fprintf(stderr, "Can't create timer thread\n");
 		exit(EXIT_FAILURE);
 	}
 	
-	if (pthread_create(@pthr_iotrap1, NULL, IOTRAP1_FUNCTION, (void*) trap1_message)){
+	if (pthread_create(&pthr_iotrap1, NULL, &io_trap1, NULL)){
 		fprintf(stderr, "Can't create IO trap1 thread\n");
 		exit(EXIT_FAILURE);
 	}
 	
-	if (pthread_create(@pthr_iotrap2, NULL, IOTRAP2_FUNCTION, (void*) trap2_message)){
+	if (pthread_create(&pthr_iotrap2, NULL, &io_trap2, NULL)){
 		fprintf(stderr, "Can't create IO trap2 thread\n");
 		exit(EXIT_FAILURE);
 	}
@@ -73,43 +82,73 @@ void mainloopFunction(struct cpu *self) {
 	}
 	
 		NewToReady(newProcessQueue, readyQueue);
-	
-	while (readyQueue > 0) {
-		
-		
+		int j;
+	while (j < 5) {
+		j++;
+		printf("\nreadyQueue size = %i\nIO1queue size = %i\nIO2queue size = %i\n\n", readyQueue->size, waitingQueueIO1->size, waitingQueueIO2->size);
 		self->pcRegister = PCB_get_pc(currProcess);
+		printf("\ncurrProcess pid = %lu pc = %lu\n", PCB_get_pid(currProcess), PCB_get_pc(currProcess));
 		SysStack = self->pcRegister;
 		
-		if (PC_increment(currProcess) == 1) { //If incrementing the PC causes termcount = terminate then puts PCB in terminate queue and dequeues new currProcess.
+		if (PC_Increment(currProcess) == 1) { //If incrementing the PC causes termcount = terminate then puts PCB in terminate queue and dequeues new currProcess.
 			PCB_set_state(currProcess, terminated);
 			currProcess->termination = time(NULL);
-			terminateQueue = enqueue(newProcessQueue, currProcess);
+			terminateQueue = enqueue(terminateQueue, currProcess);
 			
-			CurrProcess = dequeue(readyQueue);		
+			currProcess = dequeue(readyQueue);		
 			self->pcRegister = PCB_get_pc(currProcess);
 			SysStack = self->pcRegister;
 		}
+		printf("\ncurrProcess pid = %lu new pc = %lu\n", PCB_get_pid(currProcess), PCB_get_pc(currProcess));
 		
-	/*		The following if statements check for signals in all 3 threads while timer has priority. If timer mutex is unlocked goes to ISR, if IO unlocked goes to IOTrapHandler.
+		
+//	The following if statements check for signals in all 3 threads while timer has priority. If timer mutex is unlocked goes to ISR, if IO unlocked goes to IOTrapHandler.
 	
-	if (pthread_mutex_trylock(&TIMERMUTEX == 0)  { // If timer mutex is open
+		if (pthread_mutex_trylock(&timer1_mutex) == 0)  { // If timer mutex is open
+			printf("\ntimer interrupt\n\nmain locked timer1_mutex\n");
 			currProcess = ISR(timer, currProcess, readyQueue);
+			pthread_mutex_unlock(&timer1_mutex);
+			printf("\nmain released timer1_mutex\n");
+			pthread_mutex_unlock(&timer2_mutex);
+			printf("\nmain released timer2_mutex\n");
 		}
 		
-		if(pthread_mutex_trylock(&IO1MUTEX == 0) {
-			IOTrapHandler(1, waitingQueueIO1, currProcess) ;
+		if(pthread_mutex_trylock(&io1_mutex) == 0) {
+			printf("\nio1 interrupt\n\nmain locked io1_mutex\n");
+			readyQueue = enqueue(readyQueue, dequeue(waitingQueueIO1));
+			pthread_mutex_unlock(&io1_mutex);
+			printf("\nmain released io1_mutex\n");
+			if (waitingQueueIO1->size < 1) {
+				pthread_mutex_lock(&trap1_mutex);
+				printf("\nmain locked trap1_mutex\n");
+			}
 		}
 		
-		if (pthread_mutex_trylock(&IO2Mutex == 0) {
-			IOTrapHandler(2, waitingQueueIO2, currProcess);
+		if (pthread_mutex_trylock(&io2_mutex) == 0) {
+			printf("\nio2 interrupt\n\nmain locked io2_mutex\n");
+			readyQueue = enqueue(readyQueue, dequeue(waitingQueueIO2)) ;
+			pthread_mutex_unlock(&io2_mutex);
+			printf("\nmain unlocked io2_mutex\n");
+			if (waitingQueueIO2->size < 1) {
+				pthread_mutex_lock(&trap2_mutex);
+				printf("\nmain locked trap2_mutex\n");
+			}
 		}
 		
-		*/
-		
-		CheckIOTrap1(currProcess);
-		
-		currProcess = ISR(currProcess, readyQueue);
-		self->pcRegister = SysStack;
+		if (CheckIOTrap1(currProcess) == 1) {
+			currProcess = IOTrapHandler(1, waitingQueueIO1, readyQueue, currProcess);
+			if (waitingQueueIO1->size == 1) {
+				pthread_mutex_unlock(&trap1_mutex);
+				printf("\nmain unlocked trap1_mutex\n");
+			}
+		}
+		if (CheckIOTrap2(currProcess) == 1) {
+			currProcess = IOTrapHandler(2, waitingQueueIO2, readyQueue, currProcess);
+			if (waitingQueueIO2->size == 1) {
+				pthread_mutex_unlock(&trap2_mutex);
+				printf("\nmain unlocked trap2_mutex\n");
+			}
+		}
 	}
 	
 	while (readyQueue->size > 0) {
@@ -123,28 +162,60 @@ void mainloopFunction(struct cpu *self) {
 }
 
 int CheckIOTrap1(PCB_p currProcess) { //goes through IO trap array in currProcess and checks if equal to PC
-	
+	int i = 0, trap;
+	int pc = PCB_get_pc(currProcess);
+	if (currProcess->IO_1Trap[i]  == pc) {
+		return 1;
+	}
+	while (currProcess->IO_1Trap[i] != pc) {
+		i++;
+		trap = currProcess->IO_1Trap[i];
+		if (trap < 0) {
+			return 0;
+		}
+		else if (currProcess->IO_1Trap[i]  == pc) {
+			printf("\nMATCH pc = %lu IO_1Trap = %i", currProcess->pc, currProcess->IO_1Trap[i]);
+			return 1;
+		} 
+	}
+	return 0;
 }
 
-int CheckIOTrap2(PCB_p currProcess) {
-	
+int CheckIOTrap2(PCB_p currProcess) { 
+	int i = 0, trap;
+	int pc = PCB_get_pc(currProcess);
+	if (currProcess->IO_2Trap[i]  == pc) {
+		return 1;
+	}
+	while (currProcess->IO_2Trap[i]  != pc) {
+		i++;
+		trap = currProcess->IO_2Trap[i]; 
+		if (trap < 0) {
+			return 0;
+		}
+		else if (currProcess->IO_2Trap[i]  == pc) {
+			return 1;
+		} 
+	}
+	return 0;
 }
 
-PCB_p IOTrapHandler(int IONumber, Queue_q waitingQ, PCB_p currProcess) {
+
+PCB_p IOTrapHandler(int IONumber, Queue_q waitingQ, Queue_q readyQueue, PCB_p currProcess) {
 	switch(IONumber) {
 		case 1:
 		PCB_set_state(currProcess, halted);
-		enqueue(currProcess, waitingQ);
+		waitingQ = enqueue(waitingQ, currProcess);
 		//signal IO thread 1 to sleep
-		scheduler(IO, currProcess, readyQueue);
-		break;
+		return scheduler(IO, currProcess, readyQueue);
+		
 		case 2: 
 		PCB_set_state(currProcess, halted);
-		enqueue(currProcess, waitingQ);
+		enqueue(waitingQ, currProcess);
 		//signal IO thread 2 to sleep
-		scheduler(IO, currProcess, readyQueue);
+		return scheduler(IO, currProcess, readyQueue);
 	}
-	
+	return NULL;
 	
 }
 
@@ -184,6 +255,7 @@ PCB_p scheduler(enum interrupt_type i, PCB_p currProcess, Queue_q readyQueue) {
 			break;
 			
 		case interrupt:
+			break;
 	}
 	return NULL;
 }
@@ -222,32 +294,78 @@ PCB_p RoundRobinPrint(PCB_p currProcess, Queue_q readyQueue) {
 		return newCurrentProcess;
 }
 
-//MUTEX NAMES: pthr_timer, pthr_iotrap1, pthr_iotrap2;
-void Timer() {
-	int counter = QUANTUM;
-	pthread_mutex_lock(&pthr_timer);
+void *Timer(void *args) {
 	
-	while (counter > 0) {
-		nanosleep();
-		counter--; 
-	}
-	pthread_mutex_unlock(&pthr_timer);
+	pthread_mutex_lock(&timer1_mutex);
+	printf("\ntimer locked timer1_mutex\n\n");
+	int Counter;
+	
+	while(1) {
+		Counter = QUANTUM;
+		while (Counter > 0) {
+			//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+			Counter--; 
+		}
+		pthread_mutex_unlock(&timer1_mutex);
+		printf("\ntimer unlocked timer1_mutex\n");
 		// Call ISR with timer interrupt
+		while(pthread_mutex_trylock(&timer2_mutex) != 0) {
+			
+		}
+		printf("\nTIMER LOCKED TIMER2_MUTEX\n");
+		pthread_mutex_unlock(&timer2_mutex);
+		printf("\ntimer unlocked timer2_mutex\n");
+		pthread_mutex_lock(&timer1_mutex);
+		printf("\ntimer locked timer1_mutex\n");
+	}
+	return NULL;
 }
-void io_trap1() {
-	//make a random time
+void *io_trap1(void *args) {
+	
+	pthread_mutex_lock(&io1_mutex);
+	printf("\nio1 locked io1_mutex\n");
 	int ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
-	while (ioCounter > 0){
-		ioCounter--;
+	while(1) {
+		if(pthread_mutex_trylock(&trap1_mutex) == 0) {
+			
+			printf("io1 locked trap1_mutex\n\n");
+			pthread_mutex_unlock(&trap1_mutex);
+			printf("\nio1 unlocked trap1_mutex\n");
+			
+			while (ioCounter > 0){
+				//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+				ioCounter--;
+			}
+			pthread_mutex_unlock(&io1_mutex);
+			printf("\nio1 unlocked io1_mutex\n");
+			ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
+		}
 	}
-	
+	return NULL;
 		// call ISR with io interrupt
 }
-void io_trap2() {
-	int ioCounter =  (QUANTUM * 3 + QUANTUM*(rand()%2));
-	while (ioCounter > 0){
-		ioCounter--;
-	}
+void *io_trap2(void *args) {
 	
+	pthread_mutex_lock(&io2_mutex);
+	printf("\nio2 locked io2_mutex\n");
+	int ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
+	while(1) {
+		if(pthread_mutex_trylock(&trap2_mutex) == 0) {
+			
+			printf("io2 locked trap2_mutex\n\n");
+			pthread_mutex_unlock(&trap2_mutex);
+			printf("\nio2 unlocked trap2_mutex\n");
+			
+			while (ioCounter > 0){
+				//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+				ioCounter--;
+			}
+			pthread_mutex_unlock(&io2_mutex);
+			printf("\nio2 unlocked io2_mutex\n");
+			ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
+		}
+	}
+	return NULL;
 		// call ISR with io interrupt
 }
+
