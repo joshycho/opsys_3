@@ -27,6 +27,13 @@ int main (void) {
 }
 
 void mainloopFunction(struct cpu *self) {
+	pthread_mutex_init(&timer1_mutex, NULL);
+	pthread_mutex_init(&timer2_mutex, NULL);
+	pthread_mutex_init(&io1_mutex, NULL);
+	pthread_mutex_init(&io2_mutex, NULL);
+	pthread_mutex_init(&trap1_mutex, NULL);
+	pthread_mutex_init(&trap2_mutex, NULL);
+	
 	
 	pthread_mutex_lock(&timer2_mutex);
 	printf("main locked timer2_mutex\n\n");
@@ -83,7 +90,7 @@ void mainloopFunction(struct cpu *self) {
 	
 		NewToReady(newProcessQueue, readyQueue);
 		int j;
-	while (j < 5) {
+	while (j < 10) {
 		j++;
 		printf("\nreadyQueue size = %i\nIO1queue size = %i\nIO2queue size = %i\n\n", readyQueue->size, waitingQueueIO1->size, waitingQueueIO2->size);
 		self->pcRegister = PCB_get_pc(currProcess);
@@ -114,24 +121,24 @@ void mainloopFunction(struct cpu *self) {
 		}
 		
 		if(pthread_mutex_trylock(&io1_mutex) == 0) {
-			printf("\nio1 interrupt\n\nmain locked io1_mutex\n");
+			printf("\nIO1 interrupt\n\nmain locked io1_mutex\n");
 			readyQueue = enqueue(readyQueue, dequeue(waitingQueueIO1));
 			pthread_mutex_unlock(&io1_mutex);
 			printf("\nmain released io1_mutex\n");
-			if (waitingQueueIO1->size < 1) {
-				pthread_mutex_lock(&trap1_mutex);
-				printf("\nmain locked trap1_mutex\n");
+			if (waitingQueueIO1->size > 0) {
+				pthread_mutex_unlock(&trap1_mutex);
+				printf("\nmain unlocked trap1_mutex\n");
 			}
 		}
 		
 		if (pthread_mutex_trylock(&io2_mutex) == 0) {
-			printf("\nio2 interrupt\n\nmain locked io2_mutex\n");
+			printf("\nIO2 interrupt\n\nmain locked io2_mutex\n");
 			readyQueue = enqueue(readyQueue, dequeue(waitingQueueIO2)) ;
 			pthread_mutex_unlock(&io2_mutex);
 			printf("\nmain unlocked io2_mutex\n");
-			if (waitingQueueIO2->size < 1) {
-				pthread_mutex_lock(&trap2_mutex);
-				printf("\nmain locked trap2_mutex\n");
+			if (waitingQueueIO2->size > 0) {
+				pthread_mutex_unlock(&trap2_mutex);
+				printf("\nmain unlocked trap2_mutex\n");
 			}
 		}
 		
@@ -303,7 +310,7 @@ void *Timer(void *args) {
 	while(1) {
 		Counter = QUANTUM;
 		while (Counter > 0) {
-			//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+			nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
 			Counter--; 
 		}
 		pthread_mutex_unlock(&timer1_mutex);
@@ -326,18 +333,19 @@ void *io_trap1(void *args) {
 	printf("\nio1 locked io1_mutex\n");
 	int ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
 	while(1) {
-		if(pthread_mutex_trylock(&trap1_mutex) == 0) {
-			
+		if(!pthread_mutex_trylock(&trap1_mutex)) {
 			printf("io1 locked trap1_mutex\n\n");
-			pthread_mutex_unlock(&trap1_mutex);
-			printf("\nio1 unlocked trap1_mutex\n");
+			pthread_mutex_trylock(&io1_mutex);
+			printf("\nio1 locked io1_mutex\n");
 			
 			while (ioCounter > 0){
-				//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+				nanosleep((const struct timespec[]){{0, 500L}}, NULL);
 				ioCounter--;
 			}
 			pthread_mutex_unlock(&io1_mutex);
 			printf("\nio1 unlocked io1_mutex\n");
+			pthread_mutex_unlock(&trap1_mutex);
+			printf("\nio2 unlocked trap1_mutex\n");
 			ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
 		}
 	}
@@ -350,18 +358,20 @@ void *io_trap2(void *args) {
 	printf("\nio2 locked io2_mutex\n");
 	int ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
 	while(1) {
-		if(pthread_mutex_trylock(&trap2_mutex) == 0) {
-			
+		if(!pthread_mutex_trylock(&trap2_mutex)) {
 			printf("io2 locked trap2_mutex\n\n");
-			pthread_mutex_unlock(&trap2_mutex);
-			printf("\nio2 unlocked trap2_mutex\n");
+			pthread_mutex_trylock(&io2_mutex);
+			printf("\nio1 locked io2_mutex\n");
+			
 			
 			while (ioCounter > 0){
-				//nanosleep((const struct timespec[]){{0, 500000000L}}, NULL);
+				nanosleep((const struct timespec[]){{0, 500L}}, NULL);
 				ioCounter--;
 			}
 			pthread_mutex_unlock(&io2_mutex);
 			printf("\nio2 unlocked io2_mutex\n");
+			pthread_mutex_unlock(&trap2_mutex);
+			printf("\nio2 unlocked trap2_mutex\n");
 			ioCounter = (QUANTUM * 3 + QUANTUM*(rand()%2));
 		}
 	}

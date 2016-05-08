@@ -1,7 +1,7 @@
 
 #include "queue.h"
 
-#define DEFAULT_NUM_PCBS 10
+#define DEFAULT_NUM_PCBS 20
 #define QUANTUM 1
 
 enum interrupt_type {timer, IO, interrupt};	
