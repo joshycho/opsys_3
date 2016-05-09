@@ -48,23 +48,26 @@ int PCB_init (PCB_p p) {      // sets default values for member data
 
 void IO_Trap_init(PCB_p p) {
 	int currIndex = 0, currPC = 0, numTraps = 0;
-	int arr1[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-	int arr2[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-	p->IO_1Trap = arr1;
-	p->IO_2Trap = arr2;
+	int * arr1 = malloc(sizeof(int)*10);
+	int * arr2 = malloc(sizeof(int)*10);
 	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
 		srand(time(NULL));
 		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
-		arr1[currIndex] = r;
+		*(arr1 + currIndex) = r;
 		currIndex++;
 	} 
 	currIndex = 0, currPC = 0, numTraps = 0;
 	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
 		srand(time(NULL));
 		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
-		arr2[currIndex] = r;
+		*(arr2 + currIndex) = r;
 		currIndex++;
 	} 
+}
+
+int PCB_get_IO_1Trap(PCB_p p, int index) {
+	int test = *(p->IO_1Trap + index);
+	return test;
 }
 
 int PCB_set_pid (PCB_p p, unsigned long num) {		//sets pid value for the pcb

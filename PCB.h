@@ -34,6 +34,8 @@ typedef PCB * PCB_p;
 
 void IO_Trap_init(PCB_p); 
 
+int PCB_get_IO_1Trap(PCB_p, int);
+
 PCB_p PCB_construct (void); // returns a pcb pointer to heap allocation
 
 void PCB_destruct (PCB_p);  // deallocates pcb from the heap
