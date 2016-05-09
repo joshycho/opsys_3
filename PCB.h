@@ -11,7 +11,7 @@
 #define DEFAULT_PRIORITY 15
 #define DEFAULT_PC 0x0000
 #define DEFAULT_MAXPC 2345
-#define TERMINATE_COUNT 15
+#define TERMINATE_COUNT 1
 
 enum state_type {created, ready, running, interrupted, waiting, halted, terminated};	
 
@@ -25,7 +25,7 @@ typedef struct pcb {
 	int termination;	//Time the pcb is terminated 
 	unsigned int terminate; //How many cycles until it terminates ie reached maxpc and resets x times
 	unsigned int termCount; //How many times we've reached max PC
-	int IO_1Trap[10];			//Trap handler calls
+	int IO_1Trap[10];		//Trap handler calls
 	int IO_2Trap[10];			//Trap handler calls
 	
 } PCB;
@@ -33,7 +33,6 @@ typedef struct pcb {
 typedef PCB * PCB_p;
 
 void IO_Trap_init(PCB_p); 
-
 
 PCB_p PCB_construct (void); // returns a pcb pointer to heap allocation
 

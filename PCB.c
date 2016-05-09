@@ -47,22 +47,24 @@ int PCB_init (PCB_p p) {      // sets default values for member data
 }
 
 void IO_Trap_init(PCB_p p) {
-	int currIndex = 0, currPC = 0, numTraps = 0;
-	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
+	int currIndex = 0, currPC = 0;
+	
+	while (currPC < DEFAULT_MAXPC && currIndex < 10) {
 		srand(time(NULL));
 		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
 		p->IO_1Trap[currIndex] = r;
 		currIndex++;
 	} 
-	currIndex = 0, currPC = 0, numTraps = 0;
-	while (currPC < DEFAULT_MAXPC && numTraps < 10) {
+	currIndex = 0, currPC = 0;
+	
+	while (currPC < DEFAULT_MAXPC && currIndex < 10) {
 		srand(time(NULL));
 		int r = (random() % DEFAULT_MAXPC - currPC) + currPC;
-		p->IO_2Trap[currIndex]= r;
+		p->IO_2Trap[currIndex] = r;
 		currIndex++;
 	} 
+	
 }
-
 
 int PCB_set_pid (PCB_p p, unsigned long num) {		//sets pid value for the pcb
 	if (!p) {
