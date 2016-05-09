@@ -170,18 +170,18 @@ int CheckIOTrap1(PCB_p currProcess) { //goes through IO trap array in currProces
 	int pc = PCB_get_pc(currProcess);
 	trap = PCB_get_IO_1Trap(currProcess, i);
 	printf("trap = %i", trap);
-	if (*currProcess->IO_1Trap  == pc) {
+	if (currProcess->IO_1Trap[i]  == pc) {
 		return 1;
 	}
-	while (*currProcess->IO_1Trap != pc) {
-		trap = *currProcess->IO_1Trap;
+	while (currProcess->IO_1Trap[i] != pc) {
+		trap = currProcess->IO_1Trap[i];
 	printf("IO_1Trap[%i] = %i\n", i, trap);
 		i++;
-		trap = *currProcess->IO_1Trap;
+		trap = currProcess->IO_1Trap[i];
 		if (trap < 0) {
 			return 0;
 		}
-		else if (*currProcess->IO_1Trap  == pc) {
+		else if (currProcess->IO_1Trap[i]  == pc) {
 			printf("\nMATCH pc = %lu IO_1Trap = %i", currProcess->pc, *currProcess->IO_1Trap);
 			return 1;
 		} 

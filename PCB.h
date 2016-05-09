@@ -25,8 +25,8 @@ typedef struct pcb {
 	int termination;	//Time the pcb is terminated 
 	unsigned int terminate; //How many cycles until it terminates ie reached maxpc and resets x times
 	unsigned int termCount; //How many times we've reached max PC
-	int *IO_1Trap;			//Trap handler calls
-	int *IO_2Trap;			//Trap handler calls
+	int IO_1Trap[10];			//Trap handler calls
+	int IO_2Trap[10];			//Trap handler calls
 	
 } PCB;
 
@@ -34,7 +34,6 @@ typedef PCB * PCB_p;
 
 void IO_Trap_init(PCB_p); 
 
-int PCB_get_IO_1Trap(PCB_p, int);
 
 PCB_p PCB_construct (void); // returns a pcb pointer to heap allocation
 
